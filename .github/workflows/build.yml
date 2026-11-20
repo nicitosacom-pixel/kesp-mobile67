@@ -12,25 +12,36 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract project
-        run: unzip -q kespmobile67_ready_v2.zip -d extracted
+      - name: Extract ZIP
+        run: |
+          set -e
+          ZIP=$(find . -maxdepth 3 -name "*.zip" -print -quit)
+          test -n "$ZIP" || { echo "ZIP not found"; exit 1; }
+          mkdir extracted
+          unzip -q "$ZIP" -d extracted
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Find Android project
+        run: |
+          find extracted -type f | head -100
+          find extracted -type f -name "gradlew"
 
       - name: Build APK
-        working-directory: extracted/kesp-mobile67-ready
-        run: gradle assembleDebug
+        run: |
+          cd "$(dirname "$(find extracted -name gradlew -type f -print -quit)")"
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: KESP-Mobile-debug-apk
-          path: extracted/kesp-mobile67-ready/app/build/outputs/apk/debug/app-debug.apk
-          
+          name: KESP-Mobile-APK
+          path: extracted/**/build/outputs/apk/debug/*.apk
