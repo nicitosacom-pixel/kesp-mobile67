@@ -1,57 +1,50 @@
-name: Build KESP Mobile APK
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
 
-permissions:
-  contents: read
+android {
+    namespace = "com.meinfo.kesp"
+    compileSdk = 35
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    defaultConfig {
+        applicationId = "com.meinfo.kesp"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+    }
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    buildFeatures {
+        compose = true
+    }
 
-      - name: Extract project ZIP
-        run: |
-          mkdir extracted
-          ZIP=$(find . -type f -name "*.zip" -print -quit)
-          unzip -q "$ZIP" -d extracted
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+dependencies {
+    implementation(platform("androidx.compose:compose-bom:2024.09.00"))
 
-      - name: Install Gradle
-        run: |
-          wget https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          unzip -q gradle-8.9-bin.zip
-          echo "$PWD/gradle-8.9/bin" >> $GITHUB_PATH
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.activity:activity-compose:1.9.2")
 
-      - name: Build APK
-        run: |
-          PROJECT=$(find extracted -name "settings.gradle*" -type f -print -quit)
-          if [ -z "$PROJECT" ]; then
-            echo "Gradle project not found"
-            exit 1
-          fi
-          DIR=$(dirname "$PROJECT")
-          cd "$DIR"
-          gradle assembleDebug --stacktrace
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: KESP-Mobile-APK
-          path: extracted/**/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+
+    debugImplementation("androidx.compose.ui:ui-tooling")
+}
