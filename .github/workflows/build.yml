@@ -1,10 +1,10 @@
-
 name: Build KESP Mobile APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -14,34 +14,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Extract ZIP
+      - name: Extract project ZIP
         run: |
-          set -e
-          ZIP=$(find . -maxdepth 3 -name "*.zip" -print -quit)
-          test -n "$ZIP" || { echo "ZIP not found"; exit 1; }
           mkdir extracted
+          ZIP=$(find . -type f -name "*.zip" -print -quit)
           unzip -q "$ZIP" -d extracted
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Find Android project
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Gradle
         run: |
-          find extracted -type f | head -100
-          find extracted -type f -name "gradlew"
+          wget https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle-8.9-bin.zip
+          echo "$PWD/gradle-8.9/bin" >> $GITHUB_PATH
 
       - name: Build APK
         run: |
-          cd "$(dirname "$(find extracted -name gradlew -type f -print -quit)")"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          PROJECT=$(find extracted -name "settings.gradle*" -type f -print -quit)
+          if [ -z "$PROJECT" ]; then
+            echo "Gradle project not found"
+            exit 1
+          fi
+          DIR=$(dirname "$PROJECT")
+          cd "$DIR"
+          gradle assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: KESP-Mobile-APK
           path: extracted/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
